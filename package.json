@@ -1,6 +1,6 @@
 {
   "name": "google-it",
-  "version": "1.4.3",
+  "version": "1.5.0",
   "description": "A CLI and Node.js library to help retrieve, display, and store Google search results",
   "main": "./lib/main.js",
   "bin": "./lib/app.js",
@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "babel src -d lib",
-    "lint": "./node_modules/.bin/eslint --ext .js --ignore-path .eslintignore '*.js'",
+    "lint": "./node_modules/.bin/eslint 'src/*.js'",
     "test": "jest",
     "prepublish": "npm run build"
   },
@@ -44,11 +44,11 @@
     "@babel/core": "^7.7.7",
     "amex-jest-preset": "^5.0.0",
     "babel-preset-amex": "^3.3.0",
-    "codecov": "^3.6.1",
+    "codecov": "^3.6.2",
     "eslint": "^6.8.0",
     "eslint-config-amex": "^11.1.0",
     "jest": "^24.9.0",
-    "mocha": "^6.2.2",
+    "mocha": "^7.0.1",
     "prettier": "1.19.1"
   }
 }

@@ -11,6 +11,8 @@ const {
   getTitleSelector,
   getLinkSelector,
   getSnippetSelector,
+  getResultStatsSelector,
+  getResultCursorSelector,
   logIt,
   saveToFile,
   saveResponse,
@@ -68,6 +70,8 @@ export function getResults({
   titleSelector,
   linkSelector,
   snippetSelector,
+  resultStatsSelector,
+  cursorSelector,
 }) {
   const $ = cheerio.load(data);
   let results = [];
@@ -103,32 +107,52 @@ export function getResults({
   if (!noDisplay) {
     display(results, disableConsole, onlyUrls);
   }
-  return results;
+
+  const resultStats = $(getResultStatsSelector(resultStatsSelector)).html() || '';
+  const approximateResults = ((resultStats.split(' results') || [''])[0].split('About ')[1] || '').replace(',', '');
+  const seconds = parseFloat((resultStats.split(' (')[1] || '').split(' seconds')[0]);
+  const cursor = $(getResultCursorSelector(cursorSelector)).html() || '';
+  const page = parseInt(cursor.split('</span>')[1], 10);
+  const stats = {
+    page,
+    approximateResults,
+    seconds,
+  };
+  return { results, stats };
 }
 
 export function getResponse({
-  fromFile: filePath, options, htmlFileOutputPath, query, limit, userAgent, start,
+  fromFile: filePath,
+  fromString,
+  options,
+  htmlFileOutputPath,
+  query,
+  limit,
+  userAgent,
+  start,
 }) {
+  // eslint-disable-next-line consistent-return
   return new Promise((resolve, reject) => {
     if (filePath) {
       fs.readFile(filePath, (err, data) => {
         if (err) {
           return reject(new Error(`Erorr accessing file at ${filePath}: ${err}`));
         }
-        return resolve(data);
+        return resolve({ body: data });
       });
-    } else {
-      const defaultOptions = getDefaultRequestOptions({
-        limit, query, userAgent, start,
-      });
-      request({ ...defaultOptions, ...options }, (error, response, body) => {
-        if (error) {
-          reject(new Error(`Error making web request: ${error}`));
-        }
-        saveResponse(response, htmlFileOutputPath);
-        resolve({ body, response });
-      });
+    } else if (fromString) {
+      return resolve({ body: fromString });
     }
+    const defaultOptions = getDefaultRequestOptions({
+      limit, query, userAgent, start,
+    });
+    request({ ...defaultOptions, ...options }, (error, response, body) => {
+      if (error) {
+        return reject(new Error(`Error making web request: ${error}`));
+      }
+      saveResponse(response, htmlFileOutputPath);
+      return resolve({ body, response });
+    });
   });
 }
 
@@ -140,12 +164,14 @@ function googleIt(config) {
     titleSelector,
     linkSelector,
     snippetSelector,
+    resultStatsSelector,
+    cursorSelector,
     start,
     diagnostics,
   } = config;
   return new Promise((resolve, reject) => {
     getResponse(config).then(({ body, response }) => {
-      const results = getResults({
+      const { results, stats } = getResults({
         data: body,
         noDisplay: config['no-display'],
         disableConsole: config.disableConsole,
@@ -153,6 +179,8 @@ function googleIt(config) {
         titleSelector,
         linkSelector,
         snippetSelector,
+        resultStatsSelector,
+        cursorSelector,
         start,
       });
       const { statusCode } = response;
@@ -162,7 +190,9 @@ function googleIt(config) {
       saveToFile(output, results);
       openInBrowser(open, results);
       if (returnHtmlBody || diagnostics) {
-        return resolve({ results, body, response });
+        return resolve({
+          results, body, response, stats,
+        });
       }
       return resolve(results);
     }).catch(reject);
